@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,10 +17,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - name: Install
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Build the page
         run: npx vite build --config vite.desktop.config.ts
       - name: Build the installer and the portable exe
@@ -31,4 +31,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = (Select-String -Path desktop/Cargo.toml -Pattern 'version = "([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
-          gh release create "v$version" dist/Vellum-Setup-$version.exe dist/Vellum-$version-portable.exe dist/SHA256SUMS.txt --title "Vellum $version" --notes-file dist/NOTES.md
+          $tag = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "v$version" }
+          gh release create $tag "dist/Vellum-Setup-$version.exe" "dist/Vellum-$version-portable.exe" dist/SHA256SUMS.txt --title "Vellum $version" --notes-file dist/NOTES.md
