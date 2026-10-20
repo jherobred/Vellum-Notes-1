@@ -1,6 +1,6 @@
 [package]
 name = "vellum-setup"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Per-user installer for Vellum"
 publish = false

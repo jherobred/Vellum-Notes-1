@@ -19,6 +19,8 @@
   --moss: #30d158;
   --danger: #ff453a;
   --danger-deep: #d62d24;
+  --mark: #000000;
+  --mark-ink: #ffffff;
   color-scheme: dark;
 }
 
@@ -39,12 +41,15 @@
   --moss: #248a3d;
   --danger: #ff3b30;
   --danger-deep: #d21f16;
+  --mark: #000000;
+  --mark-ink: #ffffff;
   color-scheme: light;
 }
 
 @theme inline {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mark: Helvetica, "Helvetica Neue", Arimo, Arial, sans-serif;
   --color-ink: var(--ink);
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
@@ -61,6 +66,8 @@
   --color-moss: var(--moss);
   --color-danger: var(--danger);
   --color-danger-deep: var(--danger-deep);
+  --color-mark: var(--mark);
+  --color-mark-ink: var(--mark-ink);
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1.15rem;
@@ -105,55 +112,54 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   height: 100dvh;
+  min-height: 0;
   overflow: hidden;
-  background-color: var(--canvas);
-  background-image: radial-gradient(
-    900px 480px at 50% -12%,
-    color-mix(in srgb, var(--ink) 10%, var(--canvas)),
-    transparent 62%
-  );
+  background-color: var(--paper);
+}
+
+.app-shell {
+  min-height: 100dvh;
+  background: var(--paper);
 }
 
 @media (min-width: 1024px) {
-  .studio-grid {
-    padding: 1.25rem;
-  }
-
-  .studio-grid::before {
-    content: "";
-    position: absolute;
-    inset: 1.25rem;
-    border-radius: 0.9rem;
-    background: color-mix(in srgb, var(--paper) 82%, transparent);
-    border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
-      0 24px 70px color-mix(in srgb, black 40%, transparent);
-    backdrop-filter: blur(28px) saturate(1.35);
-    -webkit-backdrop-filter: blur(28px) saturate(1.35);
-    pointer-events: none;
-  }
-
   .studio-grid:not(.is-focus) {
     grid-template-columns: 14.5rem 19rem minmax(0, 1fr);
   }
 }
 
+html[data-shell="desktop"],
+html[data-shell="desktop"] body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--mark);
+}
+
+html[data-shell="desktop"] .app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+  background: var(--mark);
+}
+
+html[data-shell="desktop"] .studio-grid {
+  height: auto;
+  flex: 1;
+}
+
 .glass-pane,
 .glass-sheet {
-  background: color-mix(in srgb, var(--paper) 96%, transparent);
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  background: var(--paper);
 }
 
 @media (min-width: 1024px) {
   .glass-pane,
   .glass-sheet {
-    position: relative;
-    z-index: 1;
     overflow: hidden;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
   }
 
   .studio-grid:not(.is-focus) > .glass-pane + .glass-pane,
@@ -223,6 +229,168 @@
 
 .boot-in {
   animation: note-enter 420ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.logo-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.7rem;
+  overflow: hidden;
+  border-radius: 0.45rem;
+  background: var(--mark);
+  color: var(--mark-ink);
+  font-family: var(--font-mark);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mark-ink) 16%, transparent);
+}
+
+.logo-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 32%,
+    color-mix(in srgb, var(--mark-ink) 42%, transparent) 50%,
+    transparent 68%
+  );
+  transform: translateX(-130%);
+  animation: logo-sheen 5.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.desktop-bar {
+  position: relative;
+  display: flex;
+  height: 2.75rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 0.85rem;
+  background: var(--mark);
+  color: var(--mark-ink);
+  user-select: none;
+}
+
+.desktop-bar .logo-mark {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.desktop-bar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--wax), transparent);
+  background-size: 28% 100%;
+  background-repeat: no-repeat;
+  animation: bar-glow 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.win-btn {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--mark-ink);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.win-btn:hover {
+  background: color-mix(in srgb, var(--mark-ink) 10%, transparent);
+}
+
+.win-btn:active {
+  transform: scale(0.96);
+}
+
+.win-btn.is-close:hover {
+  background: var(--wax);
+  color: var(--on-wax);
+}
+
+.resize-edge {
+  position: fixed;
+  z-index: 80;
+}
+
+.resize-n,
+.resize-s {
+  right: 0.75rem;
+  left: 0.75rem;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-n { top: 0; }
+.resize-s { bottom: 0; }
+
+.resize-e,
+.resize-w {
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-e { right: 0; }
+.resize-w { left: 0; }
+
+.resize-nw,
+.resize-ne,
+.resize-sw,
+.resize-se {
+  width: 12px;
+  height: 12px;
+}
+
+.resize-nw { top: 0; left: 0; cursor: nwse-resize; }
+.resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+.resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.resize-se { bottom: 0; right: 0; cursor: nwse-resize; }
+
+.title-rule {
+  height: 2px;
+  margin: 0.35rem 0 -0.35rem;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--wax), transparent 72%);
+  animation: rule-draw 1.15s cubic-bezier(0.2, 0, 0, 1) forwards;
+  pointer-events: none;
+}
+
+.empty-sheet {
+  animation: sheet-float 5.5s ease-in-out infinite;
+}
+
+.empty-sheet:nth-child(2) { animation-delay: -1.4s; }
+.empty-sheet:nth-child(3) { animation-delay: -2.6s; }
+
+.session-fill {
+  transition: width 320ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.editor-shell:focus,
+.editor-shell:focus-visible {
+  outline: none;
+}
+
+.is-doc-selected {
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--wax) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wax) 35%, transparent);
 }
 
 .md-body {
@@ -354,6 +522,27 @@
 @keyframes dialog-in {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes logo-sheen {
+  0%, 62% { transform: translateX(-130%); }
+  100% { transform: translateX(130%); }
+}
+
+@keyframes bar-glow {
+  0% { background-position: -20% 0; }
+  100% { background-position: 120% 0; }
+}
+
+@keyframes rule-draw {
+  0% { transform: scaleX(0); opacity: 0; }
+  38% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+@keyframes sheet-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

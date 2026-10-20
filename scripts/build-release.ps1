@@ -41,7 +41,7 @@ $portable = "Vellum-$version-portable.exe"
 $setup = "Vellum-Setup-$version.exe"
 $notesPath = Join-Path $dist "NOTES.md"
 $noteLines = @(
-  "First Windows release of Vellum, a quiet writing desk. Notes stay on this PC.",
+  "Vellum 0.1.1. The window is frameless, the wordmark is Helvetica on black, and undo, redo, select all, copy, cut, and paste work across the page.",
   "",
   "**Install:** download ``$setup`` and run it. It installs for your user only, no admin needed, and adds Vellum to the Start menu.",
   "",

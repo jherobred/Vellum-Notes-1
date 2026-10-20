@@ -22,6 +22,7 @@ Notes in the Windows app are separate from notes in a browser. Each one keeps it
 - Focus mode and typewriter scrolling
 - Light and dark
 - Original glass UI tones, made in the app, not copied from an operating system
+- Undo, redo, select all, copy, cut, and paste
 - Export a note as Markdown, or the whole library as JSON
 
 ## Scripts
@@ -33,4 +34,4 @@ npm run dev
 
 The dev server listens on port `8080`.
 
-The Windows files are built on a tag (`v0.1.0`) by `.github/workflows/release.yml`.
+The Windows files are built on a tag (`v0.1.1`) by `.github/workflows/release.yml`.

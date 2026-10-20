@@ -426,6 +426,13 @@ export function ShortcutsDialog({ mac }: { mac: boolean }) {
   const setOpen = useNotes((s) => s.setShortcutsOpen);
   const mod = mac ? "⌘" : "Ctrl";
   const rows = [
+    [`${mod} Z`, "Undo"],
+    [`${mod} ⇧ Z`, "Redo"],
+    [`${mod} Y`, "Redo"],
+    [`${mod} A`, "Select the whole page"],
+    [`${mod} C`, "Copy"],
+    [`${mod} X`, "Cut"],
+    [`${mod} V`, "Paste"],
     [`${mod} K`, "Command palette"],
     [`${mod} N`, "New note"],
     [`${mod} F`, "Find in the open note"],
@@ -450,7 +457,7 @@ export function ShortcutsDialog({ mac }: { mac: boolean }) {
           <Dialog.Description className="mt-1 text-sm text-muted">
             The same doors, without taking your hands off the keys.
           </Dialog.Description>
-          <ul className="mt-5 divide-y divide-line">
+          <ul className="mt-5 max-h-[50dvh] divide-y divide-line overflow-y-auto">
             {rows.map(([key, label]) => (
               <li key={key} className="flex items-center justify-between gap-4 py-3 text-sm">
                 <span>{label}</span>

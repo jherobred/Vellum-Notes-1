@@ -1,6 +1,6 @@
 import { Pencil, Pin, Plus, Search, Settings, Trash2, Volume2, VolumeX } from "lucide-react";
 import { useState } from "react";
-import { Button, NotebookGlyph, Seal } from "@/components/vellum/ui";
+import { Button, NotebookGlyph } from "@/components/vellum/ui";
 import { cn } from "@/lib/cn";
 import { allTags, useNotes } from "@/lib/notes/store";
 import { ConfirmDialog } from "@/components/vellum/overlays";
@@ -37,9 +37,8 @@ export function Sidebar() {
 
   return (
     <aside className="glass-pane flex min-h-0 flex-col text-ink">
-      <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-        <Seal />
-        <p className="text-sm font-medium tracking-tight">Vellum</p>
+      <div className="flex items-center px-3 pt-4 pb-3">
+        <p className="logo-mark">Vellum</p>
       </div>
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-3 pb-4">
         <nav className="flex flex-col gap-1" aria-label="Collections">

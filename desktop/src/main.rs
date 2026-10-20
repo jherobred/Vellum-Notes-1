@@ -4,11 +4,20 @@ use std::thread;
 
 use include_dir::{include_dir, Dir};
 use tao::event::{Event, WindowEvent};
-use tao::event_loop::{ControlFlow, EventLoop};
-use tao::window::WindowBuilder;
+use tao::event_loop::{ControlFlow, EventLoopBuilder};
+use tao::window::{ResizeDirection, Theme, WindowBuilder};
 use tiny_http::{Header, Response, Server, StatusCode};
+use wry::http::Request;
 
 static UI: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/ui");
+
+enum UserEvent {
+    Drag,
+    Minimize,
+    Maximize,
+    Close,
+    Resize(ResizeDirection),
+}
 
 fn main() {
     if let Err(err) = run() {
@@ -25,30 +34,89 @@ fn run() -> Result<(), String> {
     };
     thread::spawn(move || serve(server));
 
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
+    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
+    let mut builder = WindowBuilder::new()
         .with_title("Vellum")
+        .with_decorations(false)
+        .with_theme(Some(Theme::Dark))
         .with_inner_size(tao::dpi::LogicalSize::new(1200.0, 800.0))
-        .with_min_inner_size(tao::dpi::LogicalSize::new(720.0, 520.0))
+        .with_min_inner_size(tao::dpi::LogicalSize::new(720.0, 520.0));
+
+    #[cfg(target_os = "windows")]
+    {
+        use tao::platform::windows::WindowBuilderExtWindows;
+        builder = builder.with_undecorated_shadow(true);
+    }
+
+    let window = builder
         .build(&event_loop)
         .map_err(|err| format!("Could not open a window: {err}"))?;
 
-    let _webview = wry::WebViewBuilder::new()
+    let proxy = event_loop.create_proxy();
+    let handler = move |req: Request<String>| {
+        let body = req.body().as_str();
+        let event = if body == "drag" {
+            Some(UserEvent::Drag)
+        } else if body == "minimize" {
+            Some(UserEvent::Minimize)
+        } else if body == "maximize" {
+            Some(UserEvent::Maximize)
+        } else if body == "close" {
+            Some(UserEvent::Close)
+        } else if let Some(dir) = body.strip_prefix("resize:") {
+            resize_dir(dir).map(UserEvent::Resize)
+        } else {
+            None
+        };
+        if let Some(event) = event {
+            let _ = proxy.send_event(event);
+        }
+    };
+
+    let webview = wry::WebViewBuilder::new()
         .with_url(format!("http://127.0.0.1:{port}/"))
-        .with_background_color((9, 9, 11, 255))
+        .with_background_color((0, 0, 0, 255))
+        .with_ipc_handler(handler)
         .build(&window)
         .map_err(|err| format!("Could not open the page. Windows needs the WebView2 runtime. {err}"))?;
 
+    let mut webview = Some(webview);
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
-        if let Event::WindowEvent {
-            event: WindowEvent::CloseRequested,
-            ..
-        } = event
-        {
-            *control_flow = ControlFlow::Exit;
+        match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            }
+            | Event::UserEvent(UserEvent::Close) => {
+                webview.take();
+                *control_flow = ControlFlow::Exit;
+            }
+            Event::UserEvent(UserEvent::Drag) => {
+                let _ = window.drag_window();
+            }
+            Event::UserEvent(UserEvent::Minimize) => window.set_minimized(true),
+            Event::UserEvent(UserEvent::Maximize) => window.set_maximized(!window.is_maximized()),
+            Event::UserEvent(UserEvent::Resize(direction)) => {
+                let _ = window.drag_resize_window(direction);
+            }
+            _ => {}
         }
     });
+}
+
+fn resize_dir(name: &str) -> Option<ResizeDirection> {
+    Some(match name {
+        "n" => ResizeDirection::North,
+        "s" => ResizeDirection::South,
+        "e" => ResizeDirection::East,
+        "w" => ResizeDirection::West,
+        "nw" => ResizeDirection::NorthWest,
+        "ne" => ResizeDirection::NorthEast,
+        "sw" => ResizeDirection::SouthWest,
+        "se" => ResizeDirection::SouthEast,
+        _ => return None,
+    })
 }
 
 fn serve(server: Server) {

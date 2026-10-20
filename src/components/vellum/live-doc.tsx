@@ -91,9 +91,10 @@ export const LiveDoc = forwardRef<LiveDocHandle, {
   typewriter: boolean;
   findQuery: string;
   findTick: number;
+  docSelected?: boolean;
   onChange: (next: string) => void;
   onTask: (done: boolean) => void;
-}>(function LiveDoc({ value, fontClass, typewriter, findQuery, findTick, onChange, onTask }, ref) {
+}>(function LiveDoc({ value, fontClass, typewriter, findQuery, findTick, docSelected, onChange, onTask }, ref) {
   const [focus, setFocus] = useState<Focus>({ index: 0, pos: 0, end: 0, nonce: 1 });
   const [pin, setPin] = useState(0);
   const [menuAt, setMenuAt] = useState(0);
@@ -381,7 +382,8 @@ export const LiveDoc = forwardRef<LiveDocHandle, {
 
   return (
     <div
-      className={cn("mt-8 flex flex-col pb-16", fontClass)}
+      data-live-doc=""
+      className={cn("mt-8 flex flex-col pb-16", fontClass, docSelected && "is-doc-selected")}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           const last = lines.length - 1;
@@ -766,7 +768,7 @@ function CodeBlock({
             onRemove();
           }
         }}
-        className="w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-ink outline-none"
+        className="live-input w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-ink outline-none"
       />
     </div>
   );

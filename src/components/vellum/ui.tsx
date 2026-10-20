@@ -40,20 +40,6 @@ export function Button({ className, variant, size, type = "button", ref, ...prop
   );
 }
 
-export function Seal({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex size-7 items-center justify-center rounded-md bg-wax text-xs font-semibold text-on-wax",
-        className,
-      )}
-      aria-hidden="true"
-    >
-      V
-    </span>
-  );
-}
-
 const ICONS: Record<NotebookIcon, LucideIcon> = {
   desk: Feather,
   journal: BookOpen,

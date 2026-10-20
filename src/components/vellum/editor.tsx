@@ -21,10 +21,12 @@ import {
   MoreHorizontal,
   Pin,
   Quote,
+  Redo2,
   RotateCcw,
   Search,
   Strikethrough,
   Trash2,
+  Undo2,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -39,6 +41,9 @@ import { playCue } from "@/lib/sound";
 
 const FONT = { sm: "text-base", md: "text-lg", lg: "text-xl" } as const;
 const MEASURE = { narrow: "max-w-xl", comfort: "max-w-2xl", wide: "max-w-4xl" } as const;
+const HISTORY = 120;
+
+type Snap = { title: string; body: string };
 
 export function Editor({ wide }: { wide: boolean }) {
   const note = useNotes((s) => s.notes.find((item) => item.id === s.activeNoteId) ?? null);
@@ -67,6 +72,184 @@ export function Editor({ wide }: { wide: boolean }) {
   const [settled, setSettled] = useState(true);
   const docRef = useRef<LiveDocHandle>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const pastRef = useRef<Snap[]>([]);
+  const futureRef = useRef<Snap[]>([]);
+  const snapRef = useRef<Snap>({ title: note?.title ?? "", body: note?.body ?? "" });
+  const selectedRef = useRef(false);
+  const lastEditRef = useRef(0);
+  const saveTimer = useRef(0);
+  const [trackedId, setTrackedId] = useState<string | null>(note?.id ?? null);
+  const [docSelected, setDocSelected] = useState(false);
+  const [historyTick, setHistoryTick] = useState(0);
+
+  if ((note?.id ?? null) !== trackedId) {
+    setTrackedId(note?.id ?? null);
+    setDocSelected(false);
+    selectedRef.current = false;
+    pastRef.current = [];
+    futureRef.current = [];
+    lastEditRef.current = 0;
+    snapRef.current = { title: note?.title ?? "", body: note?.body ?? "" };
+  }
+
+  const bumpHistory = () => setHistoryTick((tick) => tick + 1);
+
+  const clearSelect = () => {
+    if (!selectedRef.current) return;
+    selectedRef.current = false;
+    setDocSelected(false);
+  };
+
+  const markEditing = () => {
+    setSettled(false);
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => setSettled(true), 700);
+  };
+
+  const commitSnap = (next: Snap) => {
+    const id = note?.id;
+    if (!id) return;
+    const current = snapRef.current;
+    if (next.title === current.title && next.body === current.body) return;
+    const now = Date.now();
+    if (now - lastEditRef.current > 400) {
+      pastRef.current.push(current);
+      if (pastRef.current.length > HISTORY) pastRef.current.shift();
+    }
+    futureRef.current = [];
+    lastEditRef.current = now;
+    snapRef.current = next;
+    updateNote(id, { title: next.title, body: next.body });
+    markEditing();
+    clearSelect();
+    bumpHistory();
+  };
+
+  const undo = () => {
+    const id = note?.id;
+    const prev = pastRef.current.pop();
+    if (!id || !prev) return;
+    futureRef.current.push(snapRef.current);
+    snapRef.current = prev;
+    lastEditRef.current = 0;
+    updateNote(id, { title: prev.title, body: prev.body });
+    markEditing();
+    clearSelect();
+    bumpHistory();
+  };
+
+  const redo = () => {
+    const id = note?.id;
+    const next = futureRef.current.pop();
+    if (!id || !next) return;
+    pastRef.current.push(snapRef.current);
+    snapRef.current = next;
+    lastEditRef.current = 0;
+    updateNote(id, { title: next.title, body: next.body });
+    markEditing();
+    clearSelect();
+    bumpHistory();
+  };
+
+  const editRef = useRef({ undo, redo, commitSnap });
+  editRef.current = { undo, redo, commitSnap };
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const root = sectionRef.current;
+      const target = event.target;
+      if (!noteId() || !(target instanceof Node) || !root?.contains(target)) return;
+      const el = target instanceof HTMLElement ? target : null;
+      if (!el) return;
+      const tag = el.tagName;
+      const inTitle = el instanceof HTMLInputElement && el.dataset.noteTitle === "true";
+      const inLive = Boolean(el.closest("[data-live-doc]"));
+      if (tag === "SELECT") return;
+      if (tag === "INPUT" && !inTitle) return;
+      if (tag === "TEXTAREA" && !inLive) return;
+
+      const mod = event.metaKey || event.ctrlKey;
+      const key = event.key;
+      const lower = key.toLowerCase();
+      const api = editRef.current;
+
+      if (mod && !event.altKey && lower === "z" && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        api.undo();
+        return;
+      }
+      if (mod && !event.altKey && ((lower === "z" && event.shiftKey) || lower === "y")) {
+        event.preventDefault();
+        event.stopPropagation();
+        api.redo();
+        return;
+      }
+      if (inTitle) return;
+
+      const field = el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement ? el : null;
+      const ranged = field ? field.selectionStart !== field.selectionEnd : false;
+
+      if (mod && lower === "a") {
+        event.preventDefault();
+        event.stopPropagation();
+        selectedRef.current = true;
+        setDocSelected(true);
+        if (field) {
+          const end = field.value.length;
+          field.setSelectionRange(end, end);
+        }
+        return;
+      }
+      if ((mod && lower === "c") || (event.ctrlKey && key === "Insert")) {
+        if (!selectedRef.current) return;
+        event.preventDefault();
+        void navigator.clipboard.writeText(snapRef.current.body).catch(() => undefined);
+        return;
+      }
+      if ((mod && lower === "x") || (selectedRef.current && event.shiftKey && key === "Delete")) {
+        if (!selectedRef.current) return;
+        event.preventDefault();
+        const body = snapRef.current.body;
+        void navigator.clipboard.writeText(body).catch(() => undefined);
+        api.commitSnap({ ...snapRef.current, body: "" });
+        return;
+      }
+      if ((mod && lower === "v") || (event.shiftKey && !event.ctrlKey && !event.metaKey && key === "Insert")) {
+        if (!selectedRef.current) return;
+        event.preventDefault();
+        void navigator.clipboard
+          .readText()
+          .then((text) => editRef.current.commitSnap({ ...snapRef.current, body: text }))
+          .catch(() => undefined);
+        return;
+      }
+      if (!selectedRef.current) return;
+      if (key === "Backspace" || key === "Delete") {
+        event.preventDefault();
+        api.commitSnap({ ...snapRef.current, body: "" });
+        return;
+      }
+      if (!mod && !event.altKey && !ranged && key.length === 1) {
+        event.preventDefault();
+        api.commitSnap({ ...snapRef.current, body: key });
+      }
+    };
+    const noteId = () => useNotes.getState().activeNoteId;
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  useEffect(() => {
+    const onDown = () => {
+      if (!selectedRef.current) return;
+      selectedRef.current = false;
+      setDocSelected(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, []);
 
   useEffect(() => {
     setMenu(false);
@@ -109,14 +292,20 @@ export function Editor({ wide }: { wide: boolean }) {
   const words = countWords(`${note.title}\n${note.body}`);
   const outlineItems = outlineOf(note.body);
   const matches = findMatches(note.body, findQuery);
-
-  const markEditing = () => {
-    setSettled(false);
-    window.setTimeout(() => setSettled(true), 700);
-  };
+  const canUndo = historyTick >= 0 && pastRef.current.length > 0;
+  const canRedo = futureRef.current.length > 0;
 
   return (
-    <section className="glass-sheet relative flex min-h-0 min-w-0 flex-col">
+    <section
+      ref={sectionRef}
+      tabIndex={-1}
+      className="editor-shell glass-sheet relative flex min-h-0 min-w-0 flex-col"
+      onMouseDown={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest("input, textarea, select, button, a, [role='checkbox']")) return;
+        sectionRef.current?.focus();
+      }}
+    >
       <header className="glass-bar flex items-center gap-1 border-b border-line/80 px-2 py-2">
         {!wide && (
           <Button variant="quiet" size="icon" aria-label="Back to notes" onClick={() => setMobilePane("browse")}>
@@ -124,6 +313,13 @@ export function Editor({ wide }: { wide: boolean }) {
           </Button>
         )}
         <div className="scroll-thin flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+          <Tool label="Undo" disabled={!canUndo} onClick={undo}>
+            <Undo2 className="size-4" />
+          </Tool>
+          <Tool label="Redo" disabled={!canRedo} onClick={redo}>
+            <Redo2 className="size-4" />
+          </Tool>
+          <BarSplit />
           <Tool label="Bold" onClick={() => docRef.current?.format("bold")}>
             <Bold className="size-4" />
           </Tool>
@@ -283,14 +479,13 @@ export function Editor({ wide }: { wide: boolean }) {
           <div className="flex min-w-0 flex-1 flex-col">
             <input
               value={note.title}
+              data-note-title="true"
               aria-label="Title"
               placeholder="Untitled"
-              onChange={(event) => {
-                updateNote(note.id, { title: event.target.value });
-                markEditing();
-              }}
+              onChange={(event) => commitSnap({ ...snapRef.current, title: event.target.value })}
               className="w-full bg-transparent text-3xl font-semibold tracking-tight text-balance text-ink outline-none placeholder:text-muted/70"
             />
+            <div className="title-rule" aria-hidden="true" />
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <label className="sr-only" htmlFor="notebook-select">
                 Notebook
@@ -372,10 +567,8 @@ export function Editor({ wide }: { wide: boolean }) {
               typewriter={settings.typewriter}
               findQuery={findOpen ? findQuery : ""}
               findTick={findAt}
-              onChange={(body) => {
-                updateNote(note.id, { body });
-                markEditing();
-              }}
+              docSelected={docSelected}
+              onChange={(body) => commitSnap({ ...snapRef.current, body })}
               onTask={(done) => {
                 if (settings.sound) playCue(done ? "complete" : "select");
               }}
@@ -456,7 +649,7 @@ function SessionMeter({ goal }: { goal: number }) {
         {Math.abs(net)}
       </span>
       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-line" aria-hidden="true">
-        <span className="block h-full bg-wax" style={{ width: `${progress * 100}%` }} />
+        <span className="session-fill block h-full bg-wax" style={{ width: `${progress * 100}%` }} />
       </span>
     </span>
   );
@@ -466,9 +659,9 @@ function EmptyPage() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
       <div className="relative mb-6 h-24 w-20">
-        <span className="absolute top-2 left-2 h-20 w-16 rounded-xl bg-paper-2/80 ring-1 ring-line" />
-        <span className="absolute top-1 left-1 h-20 w-16 rounded-xl bg-paper/90 ring-1 ring-line backdrop-blur-sm" />
-        <span className="absolute top-0 left-0 flex h-20 w-16 flex-col justify-center gap-2 rounded-xl bg-paper/80 px-3 ring-1 ring-line backdrop-blur-sm">
+        <span className="empty-sheet absolute top-2 left-2 h-20 w-16 rounded-xl bg-paper-2/80 ring-1 ring-line" />
+        <span className="empty-sheet absolute top-1 left-1 h-20 w-16 rounded-xl bg-paper/90 ring-1 ring-line backdrop-blur-sm" />
+        <span className="empty-sheet absolute top-0 left-0 flex h-20 w-16 flex-col justify-center gap-2 rounded-xl bg-paper/80 px-3 ring-1 ring-line backdrop-blur-sm">
           <span className="h-1 w-8 rounded-full bg-brass" />
           <span className="h-px w-10 bg-line" />
           <span className="h-px w-7 bg-line" />
@@ -476,7 +669,7 @@ function EmptyPage() {
       </div>
       <h2 className="text-xl font-semibold tracking-tight text-ink">Nothing open</h2>
       <p className="mt-2 max-w-sm text-sm text-muted">
-        Choose a note, or start a new one. Everything stays in this browser.
+        Choose a note, or start a new one. Everything stays on this computer.
       </p>
     </div>
   );
@@ -485,10 +678,12 @@ function EmptyPage() {
 function Tool({
   label,
   onClick,
+  disabled,
   children,
 }: {
   label: string;
   onClick: () => void;
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -497,6 +692,7 @@ function Tool({
       size="icon"
       aria-label={label}
       title={label}
+      disabled={disabled}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
     >
