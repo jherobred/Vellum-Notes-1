@@ -12,3 +12,6 @@ dist
 screenshots
 artifacts
 .grok/og-pending
+desktop/ui
+desktop/target
+installer/target

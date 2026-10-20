@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vellum</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      try {
+        var theme = "midnight";
+        var raw = localStorage.getItem("vellum-studio");
+        var data = raw ? JSON.parse(raw) : null;
+        var settings = data && data.state && data.state.settings;
+        if (!localStorage.getItem("vellum-chrome")) {
+          localStorage.setItem("vellum-chrome", "1");
+          if (settings) {
+            settings.theme = "midnight";
+            localStorage.setItem("vellum-studio", JSON.stringify(data));
+          }
+        }
+        if (settings && (settings.theme === "paper" || settings.theme === "midnight")) theme = settings.theme;
+        document.documentElement.dataset.theme = theme;
+      } catch (e) {
+        document.documentElement.dataset.theme = "midnight";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+[package]
+name = "vellum"
+version = "0.1.0"
+edition = "2021"
+description = "Vellum, a quiet writing desk for Windows"
+publish = false
+
+[dependencies]
+include_dir = "0.7"
+tao = "0.37"
+tiny_http = "0.12"
+wry = "0.57"
